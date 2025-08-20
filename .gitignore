@@ -1,0 +1,7 @@
+oanda.cfg
+cookies.json
+*.csv
+*.ipynb
+*log
+*.R
+*.txt
