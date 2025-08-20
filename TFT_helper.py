@@ -675,7 +675,6 @@ def EvaluateLGB(model, X_test, y_test, df_test, model_dir="models"):
 
 def ReturnLastRow(pair, last_row = True):
     results_df, X_test, df_pred = ReturnTFTPred(pair)
-    print(X_test.shape[0])
     res_lgb = Predict_LGB(X_test, df_pred, pair)
     res_xgb = Predict_XGB(X_test, df_pred, pair)
     merged_df = pd.merge(

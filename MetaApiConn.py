@@ -185,7 +185,6 @@ class MetaApiConnection:
     async def CloseTradeByPosition(self, positionId):
         conn = await self.connect_to_account()
         res = await conn.close_position(str(int(positionId)))
-		await 
 
         return res
 
