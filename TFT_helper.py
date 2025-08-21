@@ -1,28 +1,52 @@
-from elements import df_for_news, ApplyScaling, get_news, df_for_interference, get_market_sentiment
+	
+# --- must be first, before torch/numpy/pandas ---
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+# --- standard libs ---
+import random
+import json
+import ast
+from datetime import datetime, timedelta
+
+# --- third-party libs ---
 import pandas as pd
 import numpy as np
-from features_dict import dict_for_features
-from torch import optim
-import torch.nn as nn
-from sklearn.utils.class_weight import compute_class_weight
+import joblib
+
+# Torch (import once, not twice)
 import torch
-from datetime import datetime,timedelta
+import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import optuna
-import random
-from sklearn.metrics import f1_score
+
+# limit torch threads after import
+torch.set_num_threads(1)
+
+# sklearn
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import (
+    accuracy_score, classification_report, confusion_matrix, f1_score
+)
+
+# ML libs
 import xgboost as xgb
-import ast
 import lightgbm as lgb
-import torch
-import json
-import joblib
+import optuna
+
+# your project-specific modules
+from elements import (
+    df_for_news, ApplyScaling, get_news,
+    df_for_interference, get_market_sentiment
+)
+from features_dict import dict_for_features
 from PostGresConn import PostgresSQL
 from MetaApiConn import MetaV2
-	
+
 class DetectedTrade:
 	    """
 	    Represents a detected trade opportunity and its metadata.
@@ -1094,4 +1118,48 @@ async def ReturnMappingPositions():
         except Exception as e:
             continue
             tries+=1
-            
+def ReturnWithTradeActivation(pair):
+    res = CombineWithSentiment(pair, moreData=False)
+    df = pd.read_csv("tft_xgb_params_thresh_optimized.csv")
+    
+    tft_thresh = df[df.currency == pair]['tft_thresh'].values[0]
+    xgb_thresh = df[df.currency == pair]['xgb_thresh'].values[0]
+    lgb_thresh = df[df.currency == pair]['lgb_thresh'].values[0]
+
+    # Trade signal logic
+    res['is_trade'] = np.where(
+        (res['pred'] == res['Prediction_xgb']) &
+        (res['pred'] == res['Prediction_lgb']) &
+        (res['prob'] > tft_thresh) &
+        (res['Confidence_xgb'] > xgb_thresh) &
+        (res['Confidence_lgb'] > lgb_thresh) &
+        (res['pred'] == 2),
+        2,
+        np.where(
+            (res['pred'] == res['Prediction_xgb']) &
+            (res['pred'] == res['Prediction_lgb']) &
+            (res['prob'] > tft_thresh) &
+            (res['Confidence_xgb'] > xgb_thresh) &
+            (res['Confidence_lgb'] > lgb_thresh) &
+            (res['pred'] == 0),
+            0,
+            1
+        )
+    )
+
+    # Super trade logic
+    res['super_trade'] = np.where(
+        (res['market_direction'] == 1) &
+        (res['ema_encoded_cot'] == 1) &
+        (res['is_trade'] == 2),
+        2,
+        np.where(
+            (res['market_direction'] == 0) &
+            (res['ema_encoded_cot'] == 0) &
+            (res['is_trade'] == 0),
+            0,
+            1
+        )
+    )
+
+    return res
