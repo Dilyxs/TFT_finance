@@ -1,6 +1,11 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import pandas as pd
 import numpy as np
-import os
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.model_selection import train_test_split
@@ -12,8 +17,6 @@ from cla import ModelTrainer
 from sklearn.preprocessing import OneHotEncoder
 import re
 import joblib
-import tensorflow as tf
-from tensorflow.keras.models import load_model
 from constants import sentiment_link, news_link
 import requests
 from PostGresConn import PostgresSQL
@@ -1715,138 +1718,6 @@ def df_for_interference(currency_pair, ema_length=30, shortlen=20, longlen=30, h
 
 
 
-def train_and_evaluate_rnn_model(df, features, target, pair, batch_size=32, epochs=150, confidence_threshold=0.9, timeframe="D", timesteps=10):
-    rows_c = round(0.75 * len(df))
-    valid_features = [feature for feature in features if feature in df.columns]
-    X = df.loc[:, valid_features]
-    y = df.loc[:, target]  
-
-    X_train, X_test = X[:rows_c], X[rows_c:]
-    y_train, y_test = y[:rows_c], y[rows_c:]
-    df_test = df[rows_c:].copy()
-
-    # Scale features
-    sc = StandardScaler()
-    X_train_sc = sc.fit_transform(X_train)
-    X_test_sc = sc.transform(X_test)
-    joblib.dump(sc, f'{pair}_{timeframe}_{target}_rnn_scaler_news.pkl')
-
-    # Reshape input for LSTM (samples, timesteps, features)
-    def reshape_for_rnn(X, timesteps):
-        X_reshaped = []
-        for i in range(len(X) - timesteps):
-            X_reshaped.append(X[i:i + timesteps])
-        return np.array(X_reshaped)
-
-    X_train_rnn = reshape_for_rnn(X_train_sc, timesteps)
-    X_test_rnn = reshape_for_rnn(X_test_sc, timesteps)
-
-    # Adjust y_train and y_test to match new sequence shape
-    y_train = y_train[timesteps:]
-    y_test = y_test[timesteps:]
-
-    # Build the RNN (LSTM model)
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.LSTM(units=50, return_sequences=True, input_shape=(timesteps, X_train.shape[1])),
-        tf.keras.layers.LSTM(units=50),
-        tf.keras.layers.Dense(units=len(set(df[f'{target}'])), activation='softmax')  
-    ])
-
-    # Compile the model
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-    # Train the model
-    model.fit(X_train_rnn, y_train, batch_size=batch_size, epochs=epochs)
-
-    # Save the model
-    model.save(f'{pair}_{timeframe}_combined_model_rnn_news_{target}.h5')
-
-    # Make predictions
-    y_pred_prob = model.predict(X_test_rnn, batch_size=batch_size)  
-    y_pred = np.argmax(y_pred_prob, axis=1)  
-
-    # Calculate accuracy
-    accuracy = accuracy_score(y_test, y_pred)
-
-    # Add predictions to df_test
-    df_test = df_test.iloc[timesteps:]  # Align df_test with new y_test length
-    df_test['Prediction_raw'] = y_pred
-    df_test['Confidence'] = np.max(y_pred_prob, axis=1)  
-
-    # Filter predictions with high confidence
-    sdf = df_test[[target, "Prediction_raw", "Confidence"]]
-    hp = sdf[sdf["Confidence"] > confidence_threshold]
-    hp['correct'] = (hp[target] == hp["Prediction_raw"]).astype(int)
-
-    # Calculate high-confidence accuracy
-    accuracy_peak = (hp["correct"].sum() / len(hp)) if len(hp) > 0 else 0
-    print(f"Accuracy for {pair} in {target} is {accuracy_peak}")
-
-    df_test.to_csv(f"{pair}_{timeframe}_{target}_combined_rnn_news.csv", index=False)
-
-    return accuracy, accuracy_peak, df_test
-def train_and_evaluate_ann_model(df, features, target, pair, batch_size=32, epochs=150, confidence_threshold=0.9, timeframe="D"):
-    rows_c = round(0.75 * len(df))
-    valid_features = [feature for feature in features if feature in df.columns]
-    X = df.loc[:, valid_features]
-    y = df.loc[:, target]  
-
-    X_train, X_test = X[:rows_c], X[rows_c:]
-    y_train, y_test = y[:rows_c], y[rows_c:]
-    df_test = df[rows_c:].copy()
-
-    sc = StandardScaler()
-    X_train_sc = sc.fit_transform(X_train)
-    X_test_sc = sc.transform(X_test)
-    joblib.dump(sc, f'{pair}_{timeframe}_{target}_gen_scaler_news.pkl')
-
-    # Build the ANN
-    ann = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(units=6, activation="relu"),
-        tf.keras.layers.Dense(units=6, activation="relu"),
-        tf.keras.layers.Dense(units=len(set(df[f'{target}'])), activation='softmax')  
-    ])
-
-    # Compile the model
-    ann.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-    # Train the model
-    ann.fit(X_train_sc, y_train, batch_size=batch_size, epochs=epochs)
-
-    # Save the model
-    ann.save(f'{pair}_{timeframe}_combined_model_news_{target}.h5')
-
-    # Make predictions
-    y_pred_prob = ann.predict(X_test_sc, batch_size=batch_size)  # Probabilities for each class
-    y_pred = np.argmax(y_pred_prob, axis=1)  # Get predicted class
-
-    # Calculate accuracy
-    accuracy = accuracy_score(y_test, y_pred)
-
-    # Add predictions to df_test
-    df_test['Prediction_raw'] = y_pred
-    df_test['Confidence'] = np.max(y_pred_prob, axis=1)  # Highest probability for predicted class
-
-    # Filter predictions with high confidence
-    sdf = df_test[[target, "Prediction_raw", "Confidence"]]
-    hp = sdf[sdf["Confidence"] > confidence_threshold]
-    hp['correct'] = (hp[target] == hp["Prediction_raw"]).astype(int)
-
-    # Calculate high-confidence accuracy
-    accuracy_peak = (hp["correct"].sum() / len(hp)) if len(hp) > 0 else 0
-    print(f"Accuracy for {pair} in {target} is {accuracy_peak}")
-
-    # Save test set
-    df_test.to_csv(f"{pair}_{timeframe}_{target}_combined_news.csv", index=False)
-
-    # Combine train and test sets
-    df_train = df[:rows_c].copy()
-    combined_final = pd.concat([df_train, df_test])
-
-    # Save the combined dataset
-    combined_final.to_csv(f"{pair}_{timeframe}_{target}_combined_final_news.csv", index=False)
-
-    return accuracy, accuracy_peak, df_test
 
 
 target = 'future_close_encoded'
