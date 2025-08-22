@@ -18,9 +18,9 @@ async def DeployAccounts(db, Deployement=True):
 async def main():
     db = PostgresSQL()
     now = datetime.utcnow()
-    if 45 < now.minute < 55:
+    if 40< now.minute < 59:
         await DeployAccounts(db, Deployement=True)
-    elif 0 < now.minute < 15:
+    elif 0< now.minute <20: 
         await DeployAccounts(db, Deployement=False)
 
 # Run the asyncio event loop
