@@ -15,7 +15,7 @@ db = PostgresSQL()
 
 pairs = ["AUD_USD", "NZD_USD", "EUR_USD", "USD_CAD", "USD_CHF", "USD_MXN", "GBP_USD", "USD_JPY", "USD_ZAR"]
 IsCorrectTime = True if 0 <= datetime.utcnow().minute < 10 else False
-
+MetaMap = {}
 
 async def main():
     for pair in pairs:
@@ -50,8 +50,11 @@ async def main():
                 All_accounts = db.FetchAllData("accountdata")
             
                 for acc in All_accounts:
-                    Meta = MetaV2(acc['access_token'], acc['account_id'])
-                    
+                    if acc['account_id'] in MetaMap:
+                        Meta = MetaMap[acc['account_id']]
+                    else:
+                        Meta = MetaV2(acc['access_token'], acc['account_id'])
+                        MetaMap[acc['account_id']] = Meta
                     equity = await Meta.RetrieveAccountEquity()
                     units = Oanda.calculate_position_size(pair, reg_risk, balance=equity, lots=True)
                     
