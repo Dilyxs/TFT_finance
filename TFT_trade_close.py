@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 # closing trades
 from TFT_helper import (
     CombineWithSentiment, calculate_risk, insert_detected_trade, insert_limit_order,

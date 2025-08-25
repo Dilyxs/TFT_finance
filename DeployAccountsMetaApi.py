@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import asyncio
 from datetime import datetime
 from MetaApiConn import MetaV2

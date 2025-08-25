@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 from TFT_helper import (
     CombineWithSentiment, calculate_risk, insert_detected_trade, insert_limit_order,
     MakeAnId, insert_active_trade, map_limit_order_to_active_trade, ReturnMapWithPositions,
