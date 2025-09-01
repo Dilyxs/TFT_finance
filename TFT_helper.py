@@ -66,7 +66,7 @@ class DetectedTrade:
 	        self.direction = direction
 	        self.risk = risk
 	        self.currentTime, self.expectedTime = self.ReturnTime()
-	        self.LimitClosure = pd.to_datetime(datetime.utcnow() + timedelta(hours=12))
+	        self.LimitClosure = pd.to_datetime(datetime.utcnow() + timedelta(hours=72))
 	
 	    def ReturnTime(self):
 	        currentTime = datetime.utcnow()

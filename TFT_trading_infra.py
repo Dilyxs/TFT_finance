@@ -1,5 +1,7 @@
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+from sklearn.exceptions import InconsistentVersionWarning
+warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 from oanda_class import OANDAClientParent
 from TFT_helper import CombineWithSentiment, calculate_risk, insert_detected_trade, insert_limit_order, MakeAnId, insert_active_trade, map_limit_order_to_active_trade, ReturnMapWithPositions, PositionDoubleMapping, DetermineIfOrderIsFilled, ReturnWithTradeActivation
 import pandas as pd 
