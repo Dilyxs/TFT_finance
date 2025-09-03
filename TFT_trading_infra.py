@@ -34,7 +34,7 @@ async def main():
 
                 if trade_signal is None:
                     continue
-                
+                print(f"Trade Detected with {pair} at direction {trade_signal}")  
                 curr = res['close'].values[0]
                 currentPrice = Oanda.get_current_price(pair)
                 n_digits = 4 if not pair.endswith(("JPY")) else 2
