@@ -27,7 +27,6 @@ class OANDAClientParent:
         """
         self.account_id = account_id
         self.client = oandapyV20.API(access_token=access_token, environment=environment)
-        self.db = DataDB_tracker()
         self.now = datetime.datetime.utcnow()
         self.is_friday = self.now.weekday() == 4
         self.nxt_monday = self.find_nxt_monday()
