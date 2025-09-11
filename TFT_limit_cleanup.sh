@@ -1,7 +1,14 @@
 #!/bin/bash
-source /root/venvs/py312/bin/activate
+echo "$(date) -- Starting Removing Limits -- " >> /root/TFT_trading/TradingLimitLogic.log 2>&1
 cd /root/TFT_trading
-echo "$(date) Starting Removing Limits" >> TradingLimitLogic.log
-python3 TFT_limit_cleanup.py >> TradingLimitLogic.log 2>&1
 
+DATA=$(/root/venvs/py312/bin/python TFT_limit_cleanup.py 2>&1)
+
+if echo "$DATA" | grep -q "Error"; then
+    echo "$DATA" | grep "Error" >> /root/TFT_trading/TradingLimitLogic.log
+else
+    echo "No error." >> /root/TFT_trading/TradingLimitLogic.log 2>&1
+fi
+
+echo "$(date) -- Finished Removing Limits -- " >> /root/TFT_trading/TradingLimitLogic.log 2>&1
 

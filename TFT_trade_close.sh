@@ -1,6 +1,14 @@
 #!/bin/bash
-source /root/venvs/py312/bin/activate
+echo "$(date) -- Deployment Closing All Trades -- " >> /root/TFT_trading/TradingClose.log 2>&1
 cd /root/TFT_trading
-echo "$(date) Depolyement Closing All Trades" >> TradingClose.log
-python3 TFT_trade_close.py  >> TradingClose.log 2>&1
+
+DATA=$(/root/venvs/py312/bin/python TFT_trade_close.py 2>&1)
+
+if echo "$DATA" | grep -q "Error"; then
+    echo "$DATA" | grep "Error" >> /root/TFT_trading/TradingClose.log
+else
+    echo "No error." >> /root/TFT_trading/TradingClose.log 2>&1
+fi
+
+echo "$(date) -- Finished Closing All Trades -- " >> /root/TFT_trading/TradingClose.log 2>&1
 
