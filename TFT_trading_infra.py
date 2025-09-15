@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 from sklearn.exceptions import InconsistentVersionWarning
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 from oanda_class import OANDAClientParent
-from TFT_helper import CombineWithSentiment, calculate_risk, insert_detected_trade, insert_limit_order, MakeAnId, insert_active_trade, map_limit_order_to_active_trade, ReturnMapWithPositions, PositionDoubleMapping, DetermineIfOrderIsFilled, ReturnWithTradeActivation
+from TFT_helper import CombineWithSentiment, calculate_risk, insert_detected_trade, insert_limit_order, MakeAnId, insert_active_trade, map_limit_order_to_active_trade, ReturnMapWithPositions, PositionDoubleMapping, DetermineIfOrderIsFilled, ReturnWithTradeActivation,save_map_to_file
 import pandas as pd 
 import numpy as np
 from MetaApiConn import MetaV2
@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import os
 import asyncio
-
+from ReSendClass import EmailSender
 load_dotenv()
 Oanda = OANDAClientParent(os.getenv('OANDA_ACCESS_TOKEN'), os.getenv('OANDA_ACCOUNT_ID'))
 db = PostgresSQL()
@@ -20,7 +20,7 @@ db = PostgresSQL()
 pairs = ["AUD_USD", "NZD_USD", "EUR_USD", "USD_CAD", "USD_CHF", "USD_MXN", "GBP_USD", "USD_JPY", "USD_ZAR"]
 IsCorrectTime = True if 0 <= datetime.utcnow().minute < 10 else False
 MetaMap = {}
-
+MapCurr = {}
 async def main():
     for pair in pairs:
         RunCorrectly = False
@@ -31,6 +31,7 @@ async def main():
                 
                 reg_risk, trade_signal = calculate_risk(pair, res, base_risk=0.3)                       
                 pip_size = 0.0001 if not pair.endswith(("JPY")) else 0.01
+                MapCurr[pair] = trade_signal
 
                 if trade_signal is None:
                     continue
@@ -78,6 +79,10 @@ async def main():
                 print(e)
                 continue
             tries += 1
+    path=save_map_to_file(MapCurr)
+
+    Sender = EmailSender(prefix="TFTtrader")
+    Sender.SendEmail(subject='TFT_trading for the day', "here is the txt file with results for the day", 'adsayan206@gmail.com', path)
 
 if IsCorrectTime: 
     asyncio.run(main())
