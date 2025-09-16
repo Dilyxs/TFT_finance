@@ -82,7 +82,7 @@ async def main():
     path=save_map_to_file(MapCurr)
 
     Sender = EmailSender(prefix="TFTtrader")
-    Sender.SendEmail(subject='TFT_trading for the day', "here is the txt file with results for the day", 'adsayan206@gmail.com', path)
+    Sender.SendEmail('TFT_trading for the day', "here is the txt file with results for the day", 'adsayan206@gmail.com', path)
 
 if IsCorrectTime: 
     asyncio.run(main())
