@@ -47,15 +47,17 @@ from features_dict import dict_for_features
 from PostGresConn import PostgresSQL
 from MetaApiConn import MetaV2
 
+def save_map_to_file(data_map: dict, output_filepath: str | None = None) -> str:
+    if not output_filepath:
+        output_filepath = f"{datetime.now(timezone.utc).strftime("%Y-%m-%d").replace("-", "_")}_TFT_trading_file.json"
 
-def save_map_to_file(data_map: dict, output_filepath: None):
-    output_filepath= output_filepath if output_filepath else f"{datetime.now(timezone.utc}_TFT_trading_file.txt"}
-    os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
-    
+    dirpath = os.path.dirname(output_filepath)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+
     with open(output_filepath, "w") as f:
-        for key, value in data_map.items():
-            f.write(f"{key}={value}\n")
-    
+        json.dump(data_map, f, indent=4)
+
     return output_filepath
 class DetectedTrade:
 	    """

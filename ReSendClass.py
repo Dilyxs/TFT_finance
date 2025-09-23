@@ -1,6 +1,8 @@
 import os
 import resend
 from dotenv import load_dotenv
+import json
+import base64
 
 class EmailSender:
     def __init__(self, ApiKey=None, prefix=None):
@@ -17,12 +19,26 @@ class EmailSender:
 
     def SendEmail(self, subject, message, ToWhom=None, attachmentFileName = None):
         To = self.DefaultTo if not ToWhom else ToWhom
+        if attachmentFileName:
+            with open(attachmentFileName, "rb") as f:
+                raw_bytes = f.read()
+                b64_content = base64.b64encode(raw_bytes).decode("utf-8")
+
+                attachment = {
+                "filename": os.path.basename(attachmentFileName),
+                "content": b64_content,
+                # optionally you can set content_type if needed,
+                # for example "application/json" or "application/pdf" etc.
+            }
+        else:
+            attachment = None
+
         params = {
             "from": self.From,   
             "to": [To],
             "subject": subject,
             "html": f"<strong>{message}</strong>",
-            "attachments":[] if not attachmentFileName else [{"filename":attachmentFileName, "content":open(attachmentFileName, "rb").read()}]
+            "attachments":[] if not attachmentFileName else [attachment]
         }
 
         try:
